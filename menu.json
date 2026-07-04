@@ -1,0 +1,9 @@
+{
+    "Chicken Burger": {
+        "price": 6.50,
+        "stock": 15,
+        "category": "Main",
+        "description": "Grilled chicken burger with lettuce.",
+        "daily_special": false
+    }
+} 
