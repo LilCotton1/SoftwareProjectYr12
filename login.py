@@ -19,7 +19,7 @@ class LoginWindow:
         self.root.geometry("840x475")
         self.root.configure(fg_color="#23272D")
 
-        # Tab View
+        # Tabs
 
         self.tabview = ctk.CTkTabview(
             self.root,
@@ -36,7 +36,7 @@ class LoginWindow:
         self.tabview.add("Login")
         self.tabview.add("Sign Up")
 
-        # Login
+        # Login frontend
 
         login_frame = self.tabview.tab("Login")
 
@@ -73,7 +73,7 @@ class LoginWindow:
             command=self.login_clicked
         ).pack(pady=20)
 
-        # Sign Up
+        # Sign Up frontend
 
         signup_frame = self.tabview.tab("Sign Up")
 
@@ -142,7 +142,7 @@ class LoginWindow:
 
         self.root.mainloop()
 
-    # Custom Popup
+    # Popups
 
     def popup(self, title, message):
 
@@ -168,7 +168,7 @@ class LoginWindow:
 
         popup.grab_set()
 
-    # Password Visibility
+    # Toggle Password Visibility
 
     def toggle_password(self):
 
@@ -182,7 +182,7 @@ class LoginWindow:
             self.signuppw.configure(show="*")
             self.checkpw.configure(show="*")
 
-    # Sign Up
+    # Sign Up Backend
 
     def signup_clicked(self):
 

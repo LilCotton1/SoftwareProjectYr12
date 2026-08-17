@@ -33,8 +33,17 @@ class StudentMenu():
         self.root.geometry("900x650")
         self.root.configure(fg_color="#23272D")
 
+        #Header
+        header = ctk.CTkFrame(self.root, height=70, fg_color="#343739")
+        header.pack(fill="x")
+        header.pack_propagate(False)
+
         #Welcome
-        ctk.CTkLabel(self.root, text=f"Welcome, {self.username}", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=20)
+        ctk.CTkLabel(header, text=f"Welcome, {self.username}", font=ctk.CTkFont(size=24, weight="bold")).pack(side="left", padx=20)
+
+        #Cart
+        self.cart_button = ctk.CTkButton(header, text="Cart (0)", command=self.open_cart, width=120)
+        self.cart_button.pack(side="right", padx=20)
 
         #Tabs
         self.tabs = ctk.CTkTabview(self.root, width=850, height=500)
