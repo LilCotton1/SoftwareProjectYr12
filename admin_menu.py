@@ -42,6 +42,7 @@ class AdminMenu():
 
         #Creating tabs
         self.create_dashboard()
+        self.create_accounts()
 
         self.root.mainloop()
 
@@ -84,6 +85,64 @@ class AdminMenu():
         self.order_count_label = ctk.CTkLabel(order_frame, text=str(len(self.menu)), font=ctk.CTkFont(size=30, weight="bold"), text_color="#029CFF")
         self.order_count_label.pack()
 
+
+    #Shows all accounts
+    def create_accounts(self):
+
+        account_tab = self.tabs.tab("Accounts")
+
+        ctk.CTkLabel(account_tab, text="Account Management", font=ctk.CTkFont(size=26, weight="bold")).pack(pady=15)
+
+        #Search frame
+        search_frame = ctk.CTkFrame(account_tab, fg_color="transparent")
+        search_frame.pack(fill="x", padx=20, pady=10)
+
+        #Entry box to input specific usernames
+        self.account_search = ctk.CTkEntry(search_frame, placeholder_text="Search username...", width=300)
+        self.account_search.pack(side="left", padx=5)
+
+        #Buttons to search and to clear
+        ctk.CTkButton(search_frame, text="Search", command=self.search_accounts, width=100).pack(side="left", padx=5)
+        ctk.CTkButton(search_frame, text="Clear", command=self.clear_account_search, width=100, fg_color="#505557", hover_color="#3d4143").pack(side="left", padx=5)
+
+        #Users frame
+        self.accounts_frame = ctk.CTkScrollableFrame(account_tab)
+        self.accounts_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        self.display_accounts(self.users)
+
+    #Displays every user
+    def display_accounts(self, users):
+        for widget in self.accounts_frame.winfo_children():
+            widget.destroy()
+        for username, info in users.items():
+            user_frame = ctk.CTkFrame(self.accounts_frame, fg_color="#343739")
+            user_frame.pack(fill="x", padx=5, pady=5)
+            role = info.get("role", "student")
+            balance = info.get("balance", 0.00)
+
+            #Labels
+            ctk.CTkLabel(user_frame, text=username, font=ctk.CTkFont(size=17, weight="bold")).pack(side="left", padx=15, pady=15)
+            ctk.CTkLabel(user_frame, text=f"Role: {role}").pack(side="left", padx=15)
+            ctk.CTkLabel(user_frame, text=f"Balance: ${balance:.2f}").pack(side="left", padx=15)
+
+    #Search accounts
+    def search_accounts(self):
+        search = self.account_search.get().lower()
+        
+        filtered = {}
+
+        for username, info in self.users.items():
+            if search in username.lower():
+                filtered[username] = info
+
+        self.display_accounts(filtered)
+
+    #Clear search
+    def clear_account_search(self):
+
+        self.account_search.delete(0, "end")
+        self.display_accounts(self.users)
         
     #Logout
     def logout(self):
