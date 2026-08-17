@@ -5,5 +5,21 @@
         "category": "Main",
         "description": "Grilled chicken burger with lettuce.",
         "daily_special": false
+    },
+
+    "Ham Sandwich": {
+        "price": 5.00,
+        "stock": 20,
+        "category": "Main",
+        "description": "Fresh ham sandwich.",
+        "daily_special": false
+    },
+
+    "Orange Juice": {
+        "price": 2.50,
+        "stock": 30,
+        "category": "Drink",
+        "description": "Fresh orange juice.",
+        "daily_special": true
     }
-} 
+}

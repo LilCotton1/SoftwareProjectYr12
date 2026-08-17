@@ -51,3 +51,29 @@ def login(username, password):
 
     return None
 
+#Balance function
+def get_balance(username):
+
+    users = load_users()
+
+    if username not in users:
+        return None
+
+    return users[username].get("balance", 0.00)
+
+#Adding money
+def add_balance(username, amount):
+
+    users = load_users()
+
+    if username not in users:
+        return False
+
+    users[username]["balance"] = (
+        users[username].get("balance", 0.00)
+        + amount
+    )
+
+    save_users(users)
+
+    return True
