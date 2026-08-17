@@ -40,7 +40,49 @@ class AdminMenu():
         self.tabs.add("Menu")
         self.tabs.add("Orders")
 
+        #Creating tabs
+        self.create_dashboard()
+
         self.root.mainloop()
+
+    #Dashboard
+    def create_dashboard(self):
+        dashboard = self.tabs.tab("Dashboard")
+        ctk.CTkLabel(dashboard, text="Dashboard", font=ctk.CTkFont(size=28, weight="bold")).pack(pady=25)
+
+        #Statistic frame
+        stats_frame = ctk.CTkFrame(dashboard, fg_color="transparent")
+        stats_frame.pack(fill="x", padx=30, pady=20)
+
+        #User Frame
+        users_frame = ctk.CTkFrame(stats_frame, fg_color="#343739", width=250, height=150)
+        users_frame.pack(side="left", fill="both", expand=True, padx=10)
+        users_frame.pack_propagate(False)
+
+        #Amount of users
+        ctk.CTkLabel(users_frame, text="Users", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(25, 5))
+        self.user_count_label = ctk.CTkLabel(users_frame, text=str(len(self.users)), font=ctk.CTkFont(size=30, weight="bold"), text_color="#029CFF")
+        self.user_count_label.pack()
+
+        #Menu frame
+        menu_frame = ctk.CTkFrame(stats_frame, fg_color="#343739", width=250, height=150)
+        menu_frame.pack(side="left", fill="both", expand=True, padx=10)
+        menu_frame.pack_propagate(False)
+
+        #Amount of menu items
+        ctk.CTkLabel(menu_frame, text="Menu Items", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(25, 5))
+        self.menu_count_label = ctk.CTkLabel(menu_frame, text=str(len(self.menu)), font=ctk.CTkFont(size=30, weight="bold"), text_color="#029CFF")
+        self.menu_count_label.pack()
+
+        #Orders frame
+        order_frame = ctk.CTkFrame(stats_frame, fg_color="#343739", width=250, height=150)
+        order_frame.pack(side="left", fill="both", expand=True, padx=10)
+        order_frame.pack_propagate(False)
+
+        #Amount of orders
+        ctk.CTkLabel(order_frame, text="Orders", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(25, 5))
+        self.order_count_label = ctk.CTkLabel(order_frame, text=str(len(self.menu)), font=ctk.CTkFont(size=30, weight="bold"), text_color="#029CFF")
+        self.order_count_label.pack()
 
         
     #Logout
