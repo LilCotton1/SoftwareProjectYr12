@@ -252,6 +252,9 @@ class AdminMenu():
             if info["daily_special"]:
                 ctk.CTkLabel(item_frame, text="Daily Special").pack(side="left", padx=15)
 
+            #Buttons
+            ctk.CTkButton(item_frame, text="Edit", width=80, command=lambda item=item: self.edit_menu_item(item)).pack(side="right", padx=5)
+            
     #Add menu item
     def add_menu_item(self):
         window = ctk.CTkToplevel(self.root)
@@ -309,7 +312,55 @@ class AdminMenu():
         ctk.CTkButton(window, text="Add Item", command=add_item, width=180).pack(pady=20)
         ctk.CTkButton(window, text="Cancel", command=window.destroy, width=180, fg_color="#505557", hover_color="#3d4143").pack()
 
+    #Edit menu items
+    def edit_menu_item(self, item):
+        window = ctk.CTkToplevel(self.root)
+        window.title(f"Edit Menu Item - {item}")
+        window.geometry("400x650")
+        window.resizable(False, False)
 
+        #Labels
+        ctk.CTkLabel(window, text=f"Edit Menu Item - {item}", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=20)
+
+        #Entry boxes
+        price_entry = ctk.CTkEntry(window, placeholder_text="Price", width=200)
+        price_entry.insert(0, str(self.menu[item]["price"]))
+        price_entry.pack(pady=10)
+        stock_entry = ctk.CTkEntry(window, placeholder_text="Stock", width=200)
+        stock_entry.insert(0, str(self.menu[item]["stock"]))
+        stock_entry.pack(pady=10)
+        category_drop = ctk.CTkComboBox(window, values=["Main", "Side", "Drink"], width=200)
+        category_drop.set(self.menu[item]["category"])
+        category_drop.pack(pady=10)
+        daily_special_entry = ctk.CTkCheckBox(window, text="Daily Special", width=200)
+        daily_special_entry.set(self.menu[item]["daily_special"])
+        daily_special_entry.pack(pady=10)
+
+        #Save changes function
+        def save_changes():
+            try:
+                price = float(price_entry.get())
+                stock = int(stock_entry.get())
+                category = category_drop.get()
+                daily_special = daily_special_entry.get()
+
+                self.menu[item] = {
+                    "price": price,
+                    "stock": stock,
+                    "category": category,
+                    "daily_special": daily_special
+                }
+                save_menu(self.menu)
+                self.display_menu(self.menu)
+                window.destroy()
+                self.popup("Item Updated", f"The item '{item}' has been updated.")
+
+            except ValueError:
+                self.popup("Invalid Input", "Price must be a number and stock must be an integer.")
+
+        #Buttons
+        ctk.CTkButton(window, text="Save Changes", command=save_changes, width=180).pack(pady=20)
+        ctk.CTkButton(window, text="Cancel", command=window.destroy, width=180, fg_color="#505557", hover_color="#3d4143").pack()
 
     #Popup
     def popup(self, title, message):
