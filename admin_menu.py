@@ -254,6 +254,7 @@ class AdminMenu():
 
             #Buttons
             ctk.CTkButton(item_frame, text="Edit", width=80, command=lambda item=item: self.edit_menu_item(item)).pack(side="right", padx=5)
+            ctk.CTkButton(item_frame, text="Delete", width=80, fg_color="#d9534f", hover_color="#a83232", command=lambda item=item: self.delete_menu_item(item)).pack(side="right", padx=5)
             
     #Add menu item
     def add_menu_item(self):
@@ -361,6 +362,37 @@ class AdminMenu():
         #Buttons
         ctk.CTkButton(window, text="Save Changes", command=save_changes, width=180).pack(pady=20)
         ctk.CTkButton(window, text="Cancel", command=window.destroy, width=180, fg_color="#505557", hover_color="#3d4143").pack()
+
+    #Delete menu item
+    def delete_menu_item(self, item):
+        #custom popup to confirm deletion
+        popup = ctk.CTkToplevel(self.root)
+        popup.title("Delete Menu Item")
+        popup.geometry("400x220")
+        popup.resizable(False, False)
+        popup.grab_set()
+
+        #Labels
+        ctk.CTkLabel(popup, text="Delete Menu Item?", font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(30, 10))
+        ctk.CTkLabel(popup, text=f"Are you sure you want to delete\n'{item}'?", font=ctk.CTkFont(size=14)).pack(pady=10)
+
+        #Frame
+        button_frame = ctk.CTkFrame(popup, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        #Confirm delete function
+        def confirm_delete():
+            del self.menu[item]
+            save_menu(self.menu)
+            self.menu = load_menu()
+            self.display_menu(self.menu)
+            popup.destroy()
+
+            self.popup("Item Deleted", f"The item '{item}' has been deleted from the menu.")
+
+        #Buttons
+        ctk.CTkButton(button_frame, text="Yes, Delete", width=120, fg_color="#d9534f", hover_color="#a83232", command=confirm_delete).pack(side="left", padx=10)
+        ctk.CTkButton(button_frame, text="Cancel", width=120, fg_color="#505557", hover_color="#3d4143", command=popup.destroy).pack(side="left", padx=10)
 
     #Popup
     def popup(self, title, message):
