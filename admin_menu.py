@@ -42,6 +42,7 @@ class AdminMenu():
         #Creating tabs
         self.create_dashboard()
         self.create_accounts()
+        self.create_menu()
 
         self.root.mainloop()
 
@@ -218,6 +219,96 @@ class AdminMenu():
         ctk.CTkButton(button_frame, text="Yes, Delete", width=120, fg_color="#d9534f", hover_color="#a83232", command=confirm_delete).pack(side="left", padx=10)
         ctk.CTkButton(button_frame, text="Cancel", width=120, fg_color="#505557", hover_color="#3d4143", command=popup.destroy).pack(side="left", padx=10)
 
+    #Menu management
+    def create_menu(self):
+        menu_tab = self.tabs.tab("Menu")
+        ctk.CTkLabel(menu_tab, text="Menu Management", font=ctk.CTkFont(size=26, weight="bold")).pack(pady=15)
+
+        #Buttons
+        button_frame = ctk.CTkFrame(menu_tab, fg_color="transparent")
+        button_frame.pack(fill="x", padx=20, pady=10)
+        ctk.CTkButton(button_frame, text="Add Item", width=120, command=self.add_menu_item).pack(side="left", padx=5)
+        ctk.CTkButton(button_frame, text="Refresh", width=120, command=self.refresh_menu).pack(side="left", padx=5)
+
+        #Menu frame
+        self.menu_frame = ctk.CTkScrollableFrame(menu_tab)
+        self.menu_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        self.display_menu(self.menu)
+
+    #Displays menu
+    def display_menu(self, menu):
+        for widget in self.menu_frame.winfo_children():
+            widget.destroy()
+
+        for item, info in self.menu.items():
+            item_frame = ctk.CTkFrame(self.menu_frame, fg_color="#343739")
+            item_frame.pack(fill="x", padx=5, pady=5)
+
+            #Labels
+            ctk.CTkLabel(item_frame, text=item, font=ctk.CTkFont(size=17, weight="bold")).pack(side="left", padx=15, pady=15)
+            ctk.CTkLabel(item_frame, text=f"Price: ${info['price']:.2f}").pack(side="left", padx=15)
+            ctk.CTkLabel(item_frame, text=f"Stock: {info['stock']}").pack(side="left", padx=15)
+            ctk.CTkLabel(item_frame, text=f"Category: {info['category']}").pack(side="left", padx=15)
+            if info["daily_special"]:
+                ctk.CTkLabel(item_frame, text="Daily Special").pack(side="left", padx=15)
+
+    #Add menu item
+    def add_menu_item(self):
+        window = ctk.CTkToplevel(self.root)
+        window.title("Add Menu Item")
+        window.geometry("400x650")
+        window.resizable(False, False)
+
+        #Labels
+        ctk.CTkLabel(window, text="Add Menu Item", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=20)
+
+        #Entry boxes
+        name_entry = ctk.CTkEntry(window, placeholder_text="Item Name", width=200)
+        name_entry.pack(pady=10)
+        price_entry = ctk.CTkEntry(window, placeholder_text="Price", width=200)
+        price_entry.pack(pady=10)
+        stock_entry = ctk.CTkEntry(window, placeholder_text="Stock", width=200)
+        stock_entry.pack(pady=10)
+        category_entry = ctk.CTkEntry(window, placeholder_text="Category", width=200)
+        category_entry.pack(pady=10)
+        daily_special_entry = ctk.CTkCheckBox(window, text="Daily Special", width=200)
+        daily_special_entry.pack(pady=10)
+
+        #Add item function
+        def add_item():
+            name = name_entry.get()
+            try:
+                price = float(price_entry.get())
+                stock = int(stock_entry.get())
+            except ValueError:
+                self.popup("Invalid Input", "Price must be a number and stock must be an integer.")
+                return
+            category = category_entry.get()
+
+            if not name or not category:
+                self.popup("Invalid Input", "Name and category cannot be empty.")
+                return
+
+            if price < 0 or stock < 0:
+                self.popup("Invalid Input", "Price and stock cannot be negative.")
+                return
+
+            self.menu[name] = {
+                "price": price,
+                "stock": stock,
+                "category": category,
+                "daily_special": daily_special_entry.get()
+            }
+            save_menu(self.menu)
+            self.display_menu(self.menu)
+            window.destroy()
+
+            self.popup("Item Added", f"The item '{name}' has been added to the menu.")
+
+        #Buttons
+        ctk.CTkButton(window, text="Add Item", command=add_item, width=180).pack(pady=20)
+        ctk.CTkButton(window, text="Cancel", command=window.destroy, width=180, fg_color="#505557", hover_color="#3d4143").pack()
+
 
 
     #Popup
@@ -232,6 +323,11 @@ class AdminMenu():
 
         #OK button
         ctk.CTkButton(popup, text="OK", command=popup.destroy, width=100).pack()
+
+    #Refresh menu
+    def refresh_menu(self):
+        self.menu = load_menu()
+        self.display_menu(self.menu)
     #Logout
     def logout(self):
 
