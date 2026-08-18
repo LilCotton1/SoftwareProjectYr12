@@ -1,5 +1,4 @@
 import customtkinter as ctk
-from tkinter import messagebox
 
 from auth import load_users, save_users
 from menu_manager import load_menu, save_menu
@@ -125,6 +124,7 @@ class AdminMenu():
             ctk.CTkLabel(user_frame, text=username, font=ctk.CTkFont(size=17, weight="bold")).pack(side="left", padx=15, pady=15)
             ctk.CTkLabel(user_frame, text=f"Role: {role}").pack(side="left", padx=15)
             ctk.CTkLabel(user_frame, text=f"Balance: ${balance:.2f}").pack(side="left", padx=15)
+            ctk.CTkButton(user_frame, text="Edit", width=80, command=lambda username=username: self.edit_user(username)).pack(side="right", padx=5)
 
     #Search accounts
     def search_accounts(self):
@@ -140,10 +140,63 @@ class AdminMenu():
 
     #Clear search
     def clear_account_search(self):
-
         self.account_search.delete(0, "end")
         self.display_accounts(self.users)
-        
+
+    def edit_user(self, username):
+        window = ctk.CTkToplevel(self.root)
+        window.title(f"Edit Account")
+        window.geometry("400x300")
+        window.resizable(False, False)
+
+        #Labels
+        ctk.CTkLabel(window, text="Edit Account", font=ctk.CTkFont(size=24, weight="bold")).pack(pady=20)
+        ctk.CTkLabel(window, text=f"Username: {username}", font=ctk.CTkFont(size=16)).pack(pady=10)
+
+        #Role selection via dropdown menu
+        role_drop = ctk.CTkOptionMenu(window, values=["student", "admin"], width=200)
+        role_drop.set(self.users[username].get("role", "student"))
+        role_drop.pack(pady=10)
+
+        #Add balance entry
+        balance_entry = ctk.CTkEntry(window, placeholder_text="Add balance", width=200)
+        balance_entry.insert(0, str(self.users[username].get("balance", 0.00)))
+        balance_entry.pack(pady=10)
+
+        #Save button
+        def save_changes():
+            new_role = role_drop.get().lower()
+            new_balance = float(balance_entry.get())
+
+            if new_role not in ["student", "admin"]:
+                self.popup("Error", "Invalid role selected.")
+                return
+            if new_balance < 0:
+                self.popup("Invalid Balance", "Balance cannot be negative.")
+                return
+            
+            self.users[username]["role"] = new_role
+            self.users[username]["balance"] = new_balance
+            save_users(self.users)
+            self.display_accounts(self.users)
+            window.destroy()
+
+        #Save and cancel buttons
+        ctk.CTkButton(window, text="Save Changes", command=save_changes, width=180).pack(pady=20)
+        ctk.CTkButton(window, text="Cancel", command=window.destroy, width=180, fg_color="#505557", hover_color="#3d4143").pack()
+
+    #Popup
+    def popup(self, title, message):
+        popup = ctk.CTkToplevel(self.root)
+        popup.title(title)
+        popup.geometry("350x200")
+        popup.resizable(False, False)
+
+        #Message
+        ctk.CTkLabel(popup, text=message, wraplength=300, font=ctk.CTkFont(size=14)).pack(pady=40)
+
+        #OK button
+        ctk.CTkButton(popup, text="OK", command=popup.destroy, width=100).pack()
     #Logout
     def logout(self):
 

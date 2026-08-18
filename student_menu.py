@@ -60,7 +60,6 @@ class StudentMenu():
 
     #Menu
     def create_menu(self):
-
         menu_tab = self.tabs.tab("Menu")
 
         #Search
@@ -88,7 +87,7 @@ class StudentMenu():
         for widget in self.menu_frame.winfo_children():
             widget.destroy()
 
-#Display menu
+    #Display menu
     def display_menu(self, menu):
 
         #Clear menu
