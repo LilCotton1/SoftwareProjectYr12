@@ -125,6 +125,7 @@ class AdminMenu():
             ctk.CTkLabel(user_frame, text=f"Role: {role}").pack(side="left", padx=15)
             ctk.CTkLabel(user_frame, text=f"Balance: ${balance:.2f}").pack(side="left", padx=15)
             ctk.CTkButton(user_frame, text="Edit", width=80, command=lambda username=username: self.edit_user(username)).pack(side="right", padx=5)
+            ctk.CTkButton(user_frame, text="Delete", width=80, fg_color="#d9534f", hover_color="#a83232", command=lambda username=username: self.delete_user(username)).pack(side="right", padx=5)
 
     #Search accounts
     def search_accounts(self):
@@ -143,6 +144,7 @@ class AdminMenu():
         self.account_search.delete(0, "end")
         self.display_accounts(self.users)
 
+    #Edit user
     def edit_user(self, username):
         window = ctk.CTkToplevel(self.root)
         window.title(f"Edit Account")
@@ -163,7 +165,7 @@ class AdminMenu():
         balance_entry.insert(0, str(self.users[username].get("balance", 0.00)))
         balance_entry.pack(pady=10)
 
-        #Save button
+        #Save change function
         def save_changes():
             new_role = role_drop.get().lower()
             new_balance = float(balance_entry.get())
@@ -184,6 +186,39 @@ class AdminMenu():
         #Save and cancel buttons
         ctk.CTkButton(window, text="Save Changes", command=save_changes, width=180).pack(pady=20)
         ctk.CTkButton(window, text="Cancel", command=window.destroy, width=180, fg_color="#505557", hover_color="#3d4143").pack()
+
+    #Delete user
+    def delete_user(self, username):
+        #custom popup to confirm deletion
+        popup = ctk.CTkToplevel(self.root)
+        popup.title("Delete Account")
+        popup.geometry("400x220")
+        popup.resizable(False, False)
+        popup.grab_set()
+
+        #Labels
+        ctk.CTkLabel(popup, text="Delete Account?", font=ctk.CTkFont(size=22, weight="bold")).pack(pady=(30, 10))
+        ctk.CTkLabel(popup, text=f"Are you sure you want to delete\n'{username}'?", font=ctk.CTkFont(size=14)).pack(pady=10)
+
+        #Frame
+        button_frame = ctk.CTkFrame(popup, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        #Confirm delete function
+        def confirm_delete():
+            del self.users[username]
+            save_users(self.users)
+            self.users = load_users()
+            self.display_accounts(self.users)
+            popup.destroy()
+
+            self.popup("Account Deleted", f"The account '{username}' has been deleted.")
+
+        #Buttons
+        ctk.CTkButton(button_frame, text="Yes, Delete", width=120, fg_color="#d9534f", hover_color="#a83232", command=confirm_delete).pack(side="left", padx=10)
+        ctk.CTkButton(button_frame, text="Cancel", width=120, fg_color="#505557", hover_color="#3d4143", command=popup.destroy).pack(side="left", padx=10)
+
+
 
     #Popup
     def popup(self, title, message):
