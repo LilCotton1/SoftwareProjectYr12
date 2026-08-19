@@ -1,7 +1,8 @@
 import customtkinter as ctk
 
-from auth import load_users, save_users
-from menu_manager import load_menu, save_menu
+from auth import load_users, update_user, delete_user
+from menu_manager import load_menu, add_menu_item as db_add_menu_item, update_menu_item as db_update_menu_item, delete_menu_item as db_delete_menu_item
+from orders_manager import load_orders, update_order_status as db_update_order_status
 
 
 class AdminMenu():
@@ -11,9 +12,7 @@ class AdminMenu():
         #Data
         self.users = load_users()
         self.menu = load_menu()
-
-        #Orders
-        self.orders = []
+        self.orders = load_orders()
 
         #Main window
         self.root = ctk.CTk()
@@ -43,6 +42,7 @@ class AdminMenu():
         self.create_dashboard()
         self.create_accounts()
         self.create_menu()
+        self.create_orders()
 
         self.root.mainloop()
 
@@ -82,8 +82,11 @@ class AdminMenu():
 
         #Amount of orders
         ctk.CTkLabel(order_frame, text="Orders", font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(25, 5))
-        self.order_count_label = ctk.CTkLabel(order_frame, text=str(len(self.menu)), font=ctk.CTkFont(size=30, weight="bold"), text_color="#029CFF")
+        self.order_count_label = ctk.CTkLabel(order_frame, text=str(len(self.orders)), font=ctk.CTkFont(size=30, weight="bold"), text_color="#029CFF")
         self.order_count_label.pack()
+
+        #refresh button
+        ctk.CTkButton(dashboard, text="Refresh", width=120, command=self.refresh_dashboard).pack(pady=20)
 
 
     #Shows all accounts
@@ -131,7 +134,7 @@ class AdminMenu():
     #Search accounts
     def search_accounts(self):
         search = self.account_search.get().lower()
-        
+
         filtered = {}
 
         for username, info in self.users.items():
@@ -161,15 +164,20 @@ class AdminMenu():
         role_drop.set(self.users[username].get("role", "student"))
         role_drop.pack(pady=10)
 
-        #Add balance entry
-        balance_entry = ctk.CTkEntry(window, placeholder_text="Add balance", width=200)
+        #Add Balance entry
+        balance_entry = ctk.CTkEntry(window, placeholder_text="Balance", width=200)
         balance_entry.insert(0, str(self.users[username].get("balance", 0.00)))
         balance_entry.pack(pady=10)
 
         #Save change function
         def save_changes():
             new_role = role_drop.get().lower()
-            new_balance = float(balance_entry.get())
+
+            try:
+                new_balance = float(balance_entry.get())
+            except ValueError:
+                self.popup("Invalid Balance", "Balance must be a number.")
+                return
 
             if new_role not in ["student", "admin"]:
                 self.popup("Error", "Invalid role selected.")
@@ -177,11 +185,16 @@ class AdminMenu():
             if new_balance < 0:
                 self.popup("Invalid Balance", "Balance cannot be negative.")
                 return
-            
-            self.users[username]["role"] = new_role
-            self.users[username]["balance"] = new_balance
-            save_users(self.users)
+
+            success = update_user(username, new_role, new_balance)
+
+            if not success:
+                self.popup("Error", "Unable to update this account.")
+                return
+
+            self.users = load_users()
             self.display_accounts(self.users)
+            self.refresh_dashboard()
             window.destroy()
 
         #Save and cancel buttons
@@ -207,10 +220,10 @@ class AdminMenu():
 
         #Confirm delete function
         def confirm_delete():
-            del self.users[username]
-            save_users(self.users)
+            delete_user(username)
             self.users = load_users()
             self.display_accounts(self.users)
+            self.refresh_dashboard()
             popup.destroy()
 
             self.popup("Account Deleted", f"The account '{username}' has been deleted.")
@@ -240,7 +253,7 @@ class AdminMenu():
         for widget in self.menu_frame.winfo_children():
             widget.destroy()
 
-        for item, info in self.menu.items():
+        for item, info in menu.items():
             item_frame = ctk.CTkFrame(self.menu_frame, fg_color="#343739")
             item_frame.pack(fill="x", padx=5, pady=5)
 
@@ -255,12 +268,12 @@ class AdminMenu():
             #Buttons
             ctk.CTkButton(item_frame, text="Edit", width=80, command=lambda item=item: self.edit_menu_item(item)).pack(side="right", padx=5)
             ctk.CTkButton(item_frame, text="Delete", width=80, fg_color="#d9534f", hover_color="#a83232", command=lambda item=item: self.delete_menu_item(item)).pack(side="right", padx=5)
-            
+
     #Add menu item
     def add_menu_item(self):
         window = ctk.CTkToplevel(self.root)
         window.title("Add Menu Item")
-        window.geometry("400x650")
+        window.geometry("400x700")
         window.resizable(False, False)
 
         #Labels
@@ -273,8 +286,10 @@ class AdminMenu():
         price_entry.pack(pady=10)
         stock_entry = ctk.CTkEntry(window, placeholder_text="Stock", width=200)
         stock_entry.pack(pady=10)
-        category_entry = ctk.CTkEntry(window, placeholder_text="Category", width=200)
-        category_entry.pack(pady=10)
+        category_drop = ctk.CTkOptionMenu(window, values=["Main", "Side", "Drinks"], width=200)
+        category_drop.pack(pady=10)
+        description_entry = ctk.CTkEntry(window, placeholder_text="Description", width=200)
+        description_entry.pack(pady=10)
         daily_special_entry = ctk.CTkCheckBox(window, text="Daily Special", width=200)
         daily_special_entry.pack(pady=10)
 
@@ -287,7 +302,8 @@ class AdminMenu():
             except ValueError:
                 self.popup("Invalid Input", "Price must be a number and stock must be an integer.")
                 return
-            category = category_entry.get()
+            category = category_drop.get()
+            description = description_entry.get()
 
             if not name or not category:
                 self.popup("Invalid Input", "Name and category cannot be empty.")
@@ -297,14 +313,15 @@ class AdminMenu():
                 self.popup("Invalid Input", "Price and stock cannot be negative.")
                 return
 
-            self.menu[name] = {
-                "price": price,
-                "stock": stock,
-                "category": category,
-                "daily_special": daily_special_entry.get()
-            }
-            save_menu(self.menu)
+            success = db_add_menu_item(name, price, stock, category, description, daily_special_entry.get())
+
+            if not success:
+                self.popup("Invalid Input", f"An item named '{name}' already exists.")
+                return
+
+            self.menu = load_menu()
             self.display_menu(self.menu)
+            self.refresh_dashboard()
             window.destroy()
 
             self.popup("Item Added", f"The item '{name}' has been added to the menu.")
@@ -317,7 +334,7 @@ class AdminMenu():
     def edit_menu_item(self, item):
         window = ctk.CTkToplevel(self.root)
         window.title(f"Edit Menu Item - {item}")
-        window.geometry("400x650")
+        window.geometry("400x700")
         window.resizable(False, False)
 
         #Labels
@@ -330,11 +347,14 @@ class AdminMenu():
         stock_entry = ctk.CTkEntry(window, placeholder_text="Stock", width=200)
         stock_entry.insert(0, str(self.menu[item]["stock"]))
         stock_entry.pack(pady=10)
-        category_drop = ctk.CTkComboBox(window, values=["Main", "Side", "Drink"], width=200)
+        category_drop = ctk.CTkOptionMenu(window, values=["Main", "Side", "Drink"], width=200)
         category_drop.set(self.menu[item]["category"])
         category_drop.pack(pady=10)
+        description_entry = ctk.CTkEntry(window, placeholder_text="Description", width=200)
+        description_entry.insert(0, self.menu[item].get("description", ""))
+        description_entry.pack(pady=10)
         daily_special_entry = ctk.CTkCheckBox(window, text="Daily Special", width=200)
-        daily_special_entry.set(self.menu[item]["daily_special"])
+        daily_special_entry.select() if self.menu[item]["daily_special"] else daily_special_entry.deselect()
         daily_special_entry.pack(pady=10)
 
         #Save changes function
@@ -342,22 +362,29 @@ class AdminMenu():
             try:
                 price = float(price_entry.get())
                 stock = int(stock_entry.get())
-                category = category_drop.get()
-                daily_special = daily_special_entry.get()
-
-                self.menu[item] = {
-                    "price": price,
-                    "stock": stock,
-                    "category": category,
-                    "daily_special": daily_special
-                }
-                save_menu(self.menu)
-                self.display_menu(self.menu)
-                window.destroy()
-                self.popup("Item Updated", f"The item '{item}' has been updated.")
-
             except ValueError:
                 self.popup("Invalid Input", "Price must be a number and stock must be an integer.")
+                return
+
+            category = category_drop.get()
+            description = description_entry.get()
+            daily_special = daily_special_entry.get()
+
+            if price < 0 or stock < 0:
+                self.popup("Invalid Input", "Price and stock cannot be negative.")
+                return
+
+            success = db_update_menu_item(item, price, stock, category, description, daily_special)
+
+            if not success:
+                self.popup("Error", "Unable to update this item.")
+                return
+
+            self.menu = load_menu()
+            self.display_menu(self.menu)
+            self.refresh_dashboard()
+            window.destroy()
+            self.popup("Item Updated", f"The item '{item}' has been updated.")
 
         #Buttons
         ctk.CTkButton(window, text="Save Changes", command=save_changes, width=180).pack(pady=20)
@@ -382,10 +409,10 @@ class AdminMenu():
 
         #Confirm delete function
         def confirm_delete():
-            del self.menu[item]
-            save_menu(self.menu)
+            db_delete_menu_item(item)
             self.menu = load_menu()
             self.display_menu(self.menu)
+            self.refresh_dashboard()
             popup.destroy()
 
             self.popup("Item Deleted", f"The item '{item}' has been deleted from the menu.")
@@ -393,6 +420,123 @@ class AdminMenu():
         #Buttons
         ctk.CTkButton(button_frame, text="Yes, Delete", width=120, fg_color="#d9534f", hover_color="#a83232", command=confirm_delete).pack(side="left", padx=10)
         ctk.CTkButton(button_frame, text="Cancel", width=120, fg_color="#505557", hover_color="#3d4143", command=popup.destroy).pack(side="left", padx=10)
+
+    #Orders management
+    def create_orders(self):
+
+        orders_tab = self.tabs.tab("Orders")
+
+        ctk.CTkLabel(orders_tab, text="Order Management", font=ctk.CTkFont(size=26, weight="bold")).pack(pady=15)
+
+        #Filter
+        filter_frame = ctk.CTkFrame(orders_tab, fg_color="transparent")
+        filter_frame.pack(fill="x", padx=20, pady=10)
+
+        self.order_filter = ctk.CTkOptionMenu(filter_frame, values=["All", "Pending", "Preparing", "Ready", "Completed", "Cancelled"], command=self.filter_orders)
+        self.order_filter.pack(side="left", padx=5)
+
+        ctk.CTkButton(filter_frame, text="Refresh", command=self.refresh_orders, width=100).pack(side="left", padx=10)
+
+        #Orders
+        self.orders_frame = ctk.CTkScrollableFrame(orders_tab)
+        self.orders_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        self.display_orders()
+
+    #Display orders
+    def display_orders(self, orders=None):
+
+        for widget in self.orders_frame.winfo_children():
+            widget.destroy()
+
+        if orders is None:
+            orders = self.orders
+
+        if not orders:
+            ctk.CTkLabel(self.orders_frame, text="No orders found.", font=ctk.CTkFont(size=18)).pack(pady=40)
+            return
+
+        for order in orders:
+
+            order_frame = ctk.CTkFrame(self.orders_frame, fg_color="#343739")
+            order_frame.pack(fill="x", padx=5, pady=8)
+
+            order_id = order.get("id")
+            username = order.get("username", "Unknown")
+            status = order.get("status", "Pending")
+            total = order.get("total", 0)
+            date = order.get("date", "")
+
+            top_row = ctk.CTkFrame(order_frame, fg_color="transparent")
+            top_row.pack(fill="x", padx=15, pady=(15, 0))
+
+            ctk.CTkLabel(top_row, text=f"Order #{order_id}", font=ctk.CTkFont(size=17, weight="bold")).pack(side="left")
+            ctk.CTkLabel(top_row, text=f"Student: {username}").pack(side="left", padx=15)
+            ctk.CTkLabel(top_row, text=f"Total: ${total:.2f}").pack(side="left", padx=15)
+            ctk.CTkLabel(top_row, text=date, text_color="#AAAAAA").pack(side="left", padx=15)
+
+            items_text = ", ".join(f"{item['item']} x{item['quantity']}" for item in order.get("items", []))
+            if items_text:
+                ctk.CTkLabel(order_frame, text=items_text, text_color="#CCCCCC").pack(anchor="w", padx=15, pady=(5, 15))
+
+            bottom_row = ctk.CTkFrame(order_frame, fg_color="transparent")
+            bottom_row.pack(fill="x", padx=15, pady=(0, 15))
+
+            status_menu = ctk.CTkOptionMenu(bottom_row, values=["Pending", "Preparing", "Ready", "Completed", "Cancelled"], width=130)
+            status_menu.set(status)
+            status_menu.pack(side="right", padx=10)
+
+            ctk.CTkButton(bottom_row, text="Update", width=80, command=lambda order_id=order_id, menu=status_menu: self.update_order_status(order_id, menu.get())).pack(side="right", padx=5)
+
+    #Filter orders
+    def filter_orders(self, value):
+
+        if value == "All":
+            self.display_orders(self.orders)
+            return
+
+        filtered = []
+
+        for order in self.orders:
+
+            if order.get("status", "Pending") == value:
+                filtered.append(order)
+
+        self.display_orders(filtered)
+
+    #Update order
+    def update_order_status(self, order_id, status):
+
+        success = db_update_order_status(order_id, status)
+
+        if not success:
+            self.popup("Error", "Unable to update this order.")
+            return
+
+        self.orders = load_orders()
+        self.display_orders()
+
+        self.popup("Order Updated", f"Order status changed to {status}.")
+
+    #Refresh orders
+    def refresh_orders(self):
+
+        self.orders = load_orders()
+        self.display_orders()
+        self.refresh_dashboard()
+
+    #Refresh menu
+    def refresh_menu(self):
+
+        self.menu = load_menu()
+        self.display_menu(self.menu)
+        self.refresh_dashboard()
+
+    #Dashboard refresh
+    def refresh_dashboard(self):
+        self.user_count_label.configure(text=str(len(self.users)))
+        self.menu_count_label.configure(text=str(len(self.menu)))
+        self.order_count_label.configure(text=str(len(self.orders)))
 
     #Popup
     def popup(self, title, message):
@@ -407,10 +551,6 @@ class AdminMenu():
         #OK button
         ctk.CTkButton(popup, text="OK", command=popup.destroy, width=100).pack()
 
-    #Refresh menu
-    def refresh_menu(self):
-        self.menu = load_menu()
-        self.display_menu(self.menu)
     #Logout
     def logout(self):
 

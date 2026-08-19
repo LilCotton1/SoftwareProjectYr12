@@ -1,79 +1,139 @@
 import hashlib
-import os
-import json
-USER_FILE = "users.json"
+from database import get_connection
 
-#Creates json file
-def create_user_file():
-    if not os.path.exists(USER_FILE):
-        with open(USER_FILE, "w") as file:
-            json.dump({}, file)
-
-#Hashes passwords
+# Hashes passwords
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-#Gets users from json file
-def load_users():
-    create_user_file()
-    with open(USER_FILE, "r") as file:
-        return json.load(file)
 
-#Save users    
-def save_users(users):
-    with open(USER_FILE, "w") as file:
-        json.dump(users, file, indent=4)
-
-#Signup function which loads users, checks if name is in users, hashes the password then saves as a new user
+# Signup
 def signup(username, password):
+    connection = get_connection()
+    cursor = connection.cursor()
+    hashed_password = hash_password(password)
+    try:
+        cursor.execute("""
+            INSERT INTO users (username, password, role, balance)
+            VALUES (?, ?, ?, ?)
+        """, (
+            username,
+            hashed_password,
+            "student",
+            0.00
+        ))
+        connection.commit()
+        connection.close()
 
-    users = load_users()
+        return True
 
-    if username in users:
+    except:
+        connection.close()
         return False
 
-    users[username] = {
-        "password": hash_password(password),
-        "role": "student"
-    }
-    save_users(users)
 
-    return True
-
-#Login function
+# Login
 def login(username, password):
-    users = load_users()
-    if username not in users:
-        return None
-    hashed = hash_password(password)
-    if hashed == users[username]["password"]:
-        return users[username]["role"]
+    connection = get_connection()
+    cursor = connection.cursor()
+    hashed_password = hash_password(password)
+    cursor.execute("""
+        SELECT role
+        FROM users
+        WHERE username = ? AND password = ?
+    """, (
+        username,
+        hashed_password
+    ))
+
+    result = cursor.fetchone()
+    connection.close()
+
+    if result:
+        return result[0]
+    return None
+
+
+# Get balance
+def get_balance(username):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute("""
+        SELECT balance
+        FROM users
+        WHERE username = ?
+    """, (username,))
+
+    result = cursor.fetchone()
+    connection.close()
+
+    if result:
+        return result[0]
 
     return None
 
-#Balance function
-def get_balance(username):
 
-    users = load_users()
-
-    if username not in users:
-        return None
-
-    return users[username].get("balance", 0.00)
-
-#Adding money
+# Add money
 def add_balance(username, amount):
+    connection = get_connection()
+    cursor = connection.cursor()
 
-    users = load_users()
+    cursor.execute("""
+        UPDATE users
+        SET balance = balance + ?
+        WHERE username = ?
+    """, (
+        amount,
+        username
+    ))
+    connection.commit()
+    success = cursor.rowcount > 0
+    connection.close()
 
-    if username not in users:
-        return False
+    return success
 
-    users[username]["balance"] = (
-        users[username].get("balance", 0.00)
-        + amount
-    )
 
-    save_users(users)
+# Load every user
+def load_users():
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute("SELECT username, role, balance FROM users")
+    rows = cursor.fetchall()
+    connection.close()
 
-    return True
+    users = {}
+    for username, role, balance in rows:
+        users[username] = {"role": role, "balance": balance}
+
+    return users
+
+
+# Updates users
+def update_user(username, role, balance):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute("""
+        UPDATE users
+        SET role = ?, balance = ?
+        WHERE username = ?
+    """, (
+        role,
+        balance,
+        username
+    ))
+    connection.commit()
+    success = cursor.rowcount > 0
+    connection.close()
+
+    return success
+
+
+# Delete a user
+def delete_user(username):
+    connection = get_connection()
+    cursor = connection.cursor()
+    cursor.execute("DELETE FROM users WHERE username = ?", (username,))
+    connection.commit()
+    success = cursor.rowcount > 0
+    connection.close()
+
+    return success

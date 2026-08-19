@@ -3,8 +3,7 @@ import customtkinter as ctk
 from menu_manager import load_menu
 from auth import get_balance
 from auth import add_balance
-from auth import load_users
-from auth import save_users
+from orders_manager import create_order, load_orders_for_user
 
 
 class StudentMenu():
@@ -25,7 +24,7 @@ class StudentMenu():
         self.cart = []
 
         #Order history
-        self.order_history = []
+        self.order_history = load_orders_for_user(self.username)
 
         #Main window
         self.root = ctk.CTk()
@@ -82,21 +81,12 @@ class StudentMenu():
 
     #Display menu
     def display_menu(self, menu):
-
-        #Clear menu
-        for widget in self.menu_frame.winfo_children():
-            widget.destroy()
-
-    #Display menu
-    def display_menu(self, menu):
-
         #Clear menu
         for widget in self.menu_frame.winfo_children():
             widget.destroy()
 
         #Display items
         for item, info in menu.items():
-
             #Item card
             item_frame = ctk.CTkFrame(self.menu_frame, fg_color="#343739", corner_radius=10)
             item_frame.pack(fill="x", padx=5, pady=8)
@@ -131,33 +121,25 @@ class StudentMenu():
             #Out of stock
             if info["stock"] <= 0:
                 add_button.configure(text="Out of Stock", state="disabled", fg_color="#505557")
+
     #Search menu
     def search_menu(self):
-
         search = self.search_entry.get().lower()
-
         filtered_menu = {}
-
         for item, info in self.menu.items():
-
             if search in item.lower() or search in info["category"].lower() or search in info["description"].lower():
                 filtered_menu[item] = info
-
         self.display_menu(filtered_menu)
 
     #Clear search
     def clear_search(self):
-
         self.search_entry.delete(0, "end")
         self.display_menu(self.menu)
 
     #Add item to cart
     def add_to_cart(self, item, info):
-
         for cart_item in self.cart:
-
             if cart_item["item"] == item:
-
                 if cart_item["quantity"] >= info["stock"]:
                     self.popup("Stock Limit", "You cannot add more of this item.")
                     return
@@ -167,12 +149,10 @@ class StudentMenu():
                 return
 
         self.cart.append({"item": item, "price": info["price"], "quantity": 1})
-
         self.update_cart_button()
 
     #Update cart button
     def update_cart_button(self):
-
         total_items = 0
 
         for item in self.cart:
@@ -182,7 +162,6 @@ class StudentMenu():
 
     #Open cart
     def open_cart(self):
-
         cart_window = ctk.CTkToplevel(self.root)
         cart_window.title("Shopping Cart")
         cart_window.geometry("600x600")
@@ -204,7 +183,6 @@ class StudentMenu():
 
         #Display cart
         for cart_item in self.cart:
-
             item_total = cart_item["price"] * cart_item["quantity"]
             total += item_total
 
@@ -230,16 +208,11 @@ class StudentMenu():
 
     #Remove item from cart
     def remove_from_cart(self, item, cart_window):
-
         for cart_item in self.cart:
-
             if cart_item["item"] == item:
-
                 cart_item["quantity"] -= 1
-
                 if cart_item["quantity"] <= 0:
                     self.cart.remove(cart_item)
-
                 break
 
         self.update_cart_button()
@@ -259,40 +232,36 @@ class StudentMenu():
             self.popup("Checkout Failed", "You do not have enough money.")
             return
 
-        users = load_users()
+        #Deduct balance
+        success = add_balance(self.username, -total)
 
-        if self.username not in users:
+        if not success:
             self.popup("Checkout Failed", "Account could not be found.")
             return
 
-        #Deduct balance
         self.balance -= total
 
-        users[self.username]["balance"] = self.balance
-
-        save_users(users)
-
-        #Create order
-        order = {
-            "items": [],
-            "total": total
-        }
-
-        for cart_item in self.cart:
-
-            order["items"].append({
-                "item": cart_item["item"],
-                "quantity": cart_item["quantity"],
-                "price": cart_item["price"]
-            })
-
         #Save order
-        self.order_history.append(order)
+        order_id = create_order(self.username, self.cart, total)
+
+        if order_id is None:
+            #Refund the balance if the order couldn't be saved
+            add_balance(self.username, total)
+            self.balance += total
+            self.popup("Checkout Failed", "Unable to place your order. Please try again.")
+            return
+
+        #Refresh order history
+        self.order_history = load_orders_for_user(self.username)
+        self.menu = load_menu()
+        self.display_menu(self.menu)
 
         #Clear cart
         self.cart.clear()
 
         self.update_cart_button()
+
+        self.balance_label.configure(text=f"${self.balance:.2f}")
 
         cart_window.destroy()
 
@@ -463,15 +432,14 @@ class StudentMenu():
         history_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
         #Display orders
-        for number, order in enumerate(self.order_history, start=1):
-
+        for order in self.order_history:
             order_frame = ctk.CTkFrame(history_frame, fg_color="#343739")
             order_frame.pack(fill="x", pady=5)
 
-            ctk.CTkLabel(order_frame, text=f"Order #{number}", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=15, pady=10)
+            ctk.CTkLabel(order_frame, text=f"Order #{order['id']} - {order['status']}", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=15, pady=(10, 0))
+            ctk.CTkLabel(order_frame, text=order["date"], text_color="#AAAAAA").pack(anchor="w", padx=15, pady=(0, 5))
 
             for item in order["items"]:
-
                 ctk.CTkLabel(order_frame, text=f"{item['item']} x{item['quantity']} - ${item['price']:.2f}").pack(anchor="w", padx=25, pady=2)
 
             ctk.CTkLabel(order_frame, text=f"Total: ${order['total']:.2f}").pack(anchor="w", padx=15, pady=10)
