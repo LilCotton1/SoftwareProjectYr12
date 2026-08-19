@@ -137,3 +137,36 @@ def delete_user(username):
     connection.close()
 
     return success
+
+#Enables tutorial
+def tutorial_enabled(username):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT tutorial_disabled
+        FROM users
+        WHERE username = ?
+    """, (username,))
+
+    result = cursor.fetchone()
+    connection.close()
+
+    if result is None:
+        return True
+
+    return result[0] == 0
+
+#Disables tutorial
+def disable_tutorial(username):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE users
+        SET tutorial_disabled = 1
+        WHERE username = ?
+    """, (username,))
+
+    connection.commit()
+    connection.close()

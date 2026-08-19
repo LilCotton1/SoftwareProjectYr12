@@ -4,11 +4,12 @@ from menu_manager import load_menu
 from auth import get_balance
 from auth import add_balance
 from orders_manager import create_order, load_orders_for_user
+from auth import tutorial_enabled
+from auth import disable_tutorial
 
 
 class StudentMenu():
     def __init__(self, username):
-
         self.username = username
 
         #Menu
@@ -16,7 +17,6 @@ class StudentMenu():
 
         #Balance
         self.balance = get_balance(self.username)
-
         if self.balance is None:
             self.balance = 0.00
 
@@ -54,6 +54,8 @@ class StudentMenu():
         #Create tabs
         self.create_menu()
         self.create_dashboard()
+
+        self.root.after(100, self.check_tutorial)
 
         self.root.mainloop()
 
@@ -443,6 +445,108 @@ class StudentMenu():
                 ctk.CTkLabel(order_frame, text=f"{item['item']} x{item['quantity']} - ${item['price']:.2f}").pack(anchor="w", padx=25, pady=2)
 
             ctk.CTkLabel(order_frame, text=f"Total: ${order['total']:.2f}").pack(anchor="w", padx=15, pady=10)
+
+
+    #Tutorial
+    def check_tutorial(self):
+        if tutorial_enabled(self.username):
+            self.tutorial_page = 0
+            self.show_tutorial()
+
+    def show_tutorial(self):
+        self.tutorial_overlay = ctk.CTkFrame(self.root, fg_color="#17191C")
+
+        self.tutorial_overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        self.tutorial_card = ctk.CTkFrame(self.tutorial_overlay, width=600, height=450, corner_radius=15, fg_color="#343739")
+
+        self.tutorial_card.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.tutorial_title = ctk.CTkLabel(self.tutorial_card, text="", font=ctk.CTkFont(size=28, weight="bold"))
+        self.tutorial_title.pack(pady=(40, 20))
+
+        self.tutorial_text = ctk.CTkLabel(self.tutorial_card, text="", wraplength=500, font=ctk.CTkFont(size=16))
+        self.tutorial_text.pack(pady=20)
+
+        self.tutorial_step = ctk.CTkLabel(self.tutorial_card, text="", text_color="#AAAAAA")
+        self.tutorial_step.pack(pady=10)
+
+        self.dont_show = ctk.BooleanVar(value=False)
+
+        ctk.CTkCheckBox(self.tutorial_card, text="Don't show this tutorial again", variable=self.dont_show).pack(pady=15)
+
+        button_frame = ctk.CTkFrame(self.tutorial_card, fg_color="transparent")
+        button_frame.pack(pady=20)
+
+        self.back_button = ctk.CTkButton(button_frame, text="Back", width=100, command=self.previous_tutorial, fg_color="#505557", hover_color="#3d4143")
+        self.back_button.pack(side="left", padx=10)
+
+        self.next_button = ctk.CTkButton(button_frame, text="Next", width=100, command=self.next_tutorial)
+        self.next_button.pack(side="left", padx=10)
+
+        self.update_tutorial()
+
+    def update_tutorial(self):
+        pages = [
+            (
+                "Welcome to the Canteen!",
+                "This system allows you to browse the canteen menu, add food and drinks to your cart and place orders."
+            ),
+            (
+                "Browse the Menu",
+                "Use the Menu tab to view available food and drinks. You can search for items and see their price, stock and daily specials."
+            ),
+            (
+                "Add Items to Your Cart",
+                "Click the Add to Cart button next to an item. You can then open your cart using the Cart button at the top of the screen."
+            ),
+            (
+                "Place Your Order",
+                "Review your cart and make sure you have enough balance before placing your order. Your balance will be updated after placing an order."
+            ),
+            (
+                "Manage Your Account",
+                "The Dashboard allows you to view your balance, add money, manage your account and view your previous orders."
+            )
+        ]
+
+        title, text = pages[self.tutorial_page]
+
+        self.tutorial_title.configure(text=title)
+        self.tutorial_text.configure(text=text)
+        self.tutorial_step.configure(text=f"Step {self.tutorial_page + 1} of {len(pages)}")
+
+        if self.tutorial_page == 0:
+            self.back_button.configure(state="disabled")
+        else:
+            self.back_button.configure(state="normal")
+
+        if self.tutorial_page == len(pages) - 1:
+            self.next_button.configure(text="Finish")
+        else:
+            self.next_button.configure(text="Next")
+
+    def next_tutorial(self):
+
+        if self.tutorial_page < 4:
+            self.tutorial_page += 1
+            self.update_tutorial()
+
+        else:
+            self.close_tutorial()
+
+    def previous_tutorial(self):
+
+        if self.tutorial_page > 0:
+            self.tutorial_page -= 1
+            self.update_tutorial()
+
+    def close_tutorial(self):
+
+        if self.dont_show.get():
+            disable_tutorial(self.username)
+
+        self.tutorial_overlay.destroy()
 
     #Popup
     def popup(self, title, message):

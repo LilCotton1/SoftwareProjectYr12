@@ -2,13 +2,11 @@ import sqlite3
 
 DATABASE = "canteen.db"
 
-
 def get_connection():
     return sqlite3.connect(DATABASE)
 
-
+# Creates tables in the database if they do not exist
 def create_tables():
-
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -19,7 +17,8 @@ def create_tables():
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'student',
-            balance REAL NOT NULL DEFAULT 0
+            balance REAL NOT NULL DEFAULT 0,
+            tutorial_disabled INTEGER NOT NULL DEFAULT 0
         )
     """)
 
